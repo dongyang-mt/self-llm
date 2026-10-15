@@ -38,10 +38,7 @@ def main():
     import torch_musa  # noqa: F401
 
     import torch
-    from transformers import (
-        AutoModelForCausalLM, AutoTokenizer, DataCollatorForSeq2Seq,
-        Trainer, TrainingArguments,
-    )
+    from transformers import AutoModelForCausalLM, AutoTokenizer
 
     if not torch.musa.is_available() or not torch.cuda.is_available():
         raise RuntimeError("Start with scripts/musa/run.py inside the MUSA-enabled container")
@@ -77,6 +74,7 @@ def main():
         return
 
     from peft import LoraConfig, TaskType, get_peft_model
+    from transformers import DataCollatorForSeq2Seq, Trainer, TrainingArguments
 
     records = json.loads(args.data_json.read_text(encoding="utf-8"))
     if not isinstance(records, list) or not records:

@@ -34,18 +34,18 @@ def main() -> None:
     dtype = {"bf16": torch.bfloat16, "fp16": torch.float16, "fp32": torch.float32}[args.dtype]
     model = Qwen3VLForConditionalGeneration.from_pretrained(
         str(args.model_dir), torch_dtype=dtype, device_map=None, local_files_only=True
-    ).to("cuda:0").eval()
+    ).to("musa:0").eval()
     if args.lora_dir is not None:
         from peft import PeftModel
 
-        model = PeftModel.from_pretrained(model, str(args.lora_dir)).to("cuda:0").eval()
+        model = PeftModel.from_pretrained(model, str(args.lora_dir)).to("musa:0").eval()
 
     if any(parameter.device.type != "musa" or parameter.device.index != 0 for parameter in model.parameters()):
         raise RuntimeError("Model parameters did not land on MUSA device 0")
     processor = AutoProcessor.from_pretrained(str(args.model_dir), local_files_only=True)
     messages = [{"role": "user", "content": [{"type": "text", "text": args.prompt}]}]
     text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    inputs = processor(text=[text], return_tensors="pt").to("cuda:0")
+    inputs = processor(text=[text], return_tensors="pt").to("musa:0")
     with torch.inference_mode():
         output = model.generate(**inputs, max_new_tokens=args.max_new_tokens, do_sample=False)
     if output.device.type != "musa":

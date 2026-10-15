@@ -48,15 +48,9 @@ def main():
     import torch_musa  # noqa: F401
 
     import torch
-    from transformers import (
-        AutoModelForCausalLM,
-        AutoTokenizer,
-        DataCollatorForSeq2Seq,
-        Trainer,
-        TrainingArguments,
-    )
+    from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    if not torch.musa.is_available() or not torch.cuda.is_available():
+    if not torch.musa.is_available():
         raise RuntimeError("Start with scripts/musa/run.py inside the MUSA-enabled container")
     dtype = torch.float32 if args.dtype == "float32" else torch.bfloat16
     tokenizer = AutoTokenizer.from_pretrained(
@@ -69,7 +63,7 @@ def main():
         local_files_only=True,
         trust_remote_code=True,
         torch_dtype=dtype,
-    ).to("cuda:0")
+    ).to("musa:0")
 
     def check_device():
         if any(p.device.type != "musa" or p.device.index != 0 for p in model.parameters()):
@@ -78,7 +72,7 @@ def main():
     check_device()
     if args.action == "infer":
         model.eval()
-        inputs = tokenizer(_prompt_text(args.prompt), return_tensors="pt").to("cuda:0")
+        inputs = tokenizer(_prompt_text(args.prompt), return_tensors="pt").to("musa:0")
         with torch.no_grad():
             output = model.generate(
                 **inputs,
@@ -93,6 +87,7 @@ def main():
         return
 
     from peft import LoraConfig, TaskType, get_peft_model
+    from transformers import DataCollatorForSeq2Seq, Trainer, TrainingArguments
 
     records = json.loads(args.data_json.read_text(encoding="utf-8"))
     if not isinstance(records, list) or not records:

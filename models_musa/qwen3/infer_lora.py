@@ -9,11 +9,6 @@ import json
 import os
 from pathlib import Path
 
-# torchada exposes the CUDA-compatible API used by the original Transformers path.
-os.environ.setdefault("TORCHADA_FORCE_CUDA_AVAILABLE", "1")
-import torchada  # noqa: F401
-import torch_musa  # noqa: F401
-
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -36,6 +31,11 @@ def main():
             parser.error("--output-dir must be empty")
     if args.max_steps < 1 or args.max_length < 8 or args.max_new_tokens < 1:
         parser.error("invalid step count or sequence length")
+
+    # Keep help and static inspection usable without the MUSA-only runtime.
+    os.environ.setdefault("TORCHADA_FORCE_CUDA_AVAILABLE", "1")
+    import torchada  # noqa: F401
+    import torch_musa  # noqa: F401
 
     import torch
     from transformers import (

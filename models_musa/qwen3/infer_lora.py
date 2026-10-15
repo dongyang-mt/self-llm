@@ -40,7 +40,7 @@ def main():
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    if not torch.musa.is_available() or not torch.cuda.is_available():
+    if not torch.musa.is_available():
         raise RuntimeError("Start with scripts/musa/run.py inside the MUSA-enabled container")
     dtype = torch.float32 if args.dtype == "float32" else torch.bfloat16
     tokenizer = AutoTokenizer.from_pretrained(str(args.model_dir), local_files_only=True)
@@ -49,7 +49,7 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(
         str(args.model_dir), local_files_only=True,
         torch_dtype=dtype, attn_implementation="eager",
-    ).to("cuda:0")
+    ).to("musa:0")
 
     def check_device():
         if any(p.device.type != "musa" or p.device.index != 0 for p in model.parameters()):
@@ -64,7 +64,7 @@ def main():
     check_device()
     if args.action == "infer":
         model.eval()
-        inputs = tokenizer(prompt_text(args.prompt), return_tensors="pt").to("cuda:0")
+        inputs = tokenizer(prompt_text(args.prompt), return_tensors="pt").to("musa:0")
         with torch.no_grad():
             output = model.generate(**inputs, max_new_tokens=args.max_new_tokens, do_sample=False)
         if output.device.type != "musa":

@@ -35,11 +35,11 @@ def main() -> None:
     dtype = {"bf16": torch.bfloat16, "fp16": torch.float16, "fp32": torch.float32}[args.dtype]
     model = Qwen2VLForConditionalGeneration.from_pretrained(
         str(args.model_dir), torch_dtype=dtype, device_map=None, local_files_only=True
-    ).to("cuda:0").eval()
+    ).to("musa:0").eval()
     if args.lora_dir is not None:
         from peft import PeftModel
 
-        model = PeftModel.from_pretrained(model, str(args.lora_dir)).to("cuda:0").eval()
+        model = PeftModel.from_pretrained(model, str(args.lora_dir)).to("musa:0").eval()
     if any(parameter.device.type != "musa" or parameter.device.index != 0 for parameter in model.parameters()):
         raise RuntimeError("Model parameters did not land on MUSA device 0")
 
@@ -56,7 +56,7 @@ def main() -> None:
 
         image_inputs, video_inputs = process_vision_info(messages)
         processor_kwargs.update(images=image_inputs, videos=video_inputs)
-    inputs = processor(**processor_kwargs).to("cuda:0")
+    inputs = processor(**processor_kwargs).to("musa:0")
     with torch.inference_mode():
         output = model.generate(**inputs, max_new_tokens=args.max_new_tokens, do_sample=False)
     if output.device.type != "musa":
